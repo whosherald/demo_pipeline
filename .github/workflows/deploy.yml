@@ -90,7 +90,7 @@ jobs:
             docker rm devsecops || true
             
             docker pull docker.io/dockerherald/devsecops_github:latest
-            docker run -d --name devsecops -p 80:80 docker.io/dockerherald/devsecops_github:latest
+            docker run -d --name devsecops -p 8000:8000 docker.io/dockerherald/devsecops_github:latest
 
             
             
