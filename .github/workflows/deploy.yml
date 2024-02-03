@@ -68,7 +68,7 @@ jobs:
     needs: trivy_scan
     runs-on: ubuntu-latest
    
-
+# // step
     steps:
 
       - name: Deploy to my serer
