@@ -9,35 +9,35 @@ on:
 
 jobs:
 
-  codeql_scan:
-      name: Analyze
-      runs-on: ubuntu-latest
-      timeout-minutes: 360
-      permissions:
-        security-events: write
-        actions: read
-        contents: read
+  # codeql_scan:
+  #     name: Analyze
+  #     runs-on: ubuntu-latest
+  #     timeout-minutes: 360
+  #     permissions:
+  #       security-events: write
+  #       actions: read
+  #       contents: read
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
+  #     steps:
+  #       - name: Checkout repository
+  #         uses: actions/checkout@v4
 
-        # Initializes the CodeQL tools for scanning..
-        - name: Initialize CodeQL for PHP
-          uses: github/codeql-action/init@v3
-          with:
-            languages: php
+  #       # Initializes the CodeQL tools for scanning..
+  #       - name: Initialize CodeQL for PHP
+  #         uses: github/codeql-action/init@v3
+  #         with:
+  #           languages: php
 
-        - name: Autobuild
-          uses: github/codeql-action/autobuild@v3
+  #       - name: Autobuild
+  #         uses: github/codeql-action/autobuild@v3
 
-        - name: Perform CodeQL Analysis for PHP
-          uses: github/codeql-action/analyze@v3
-          with:
-            category: "/language:php"
+  #       - name: Perform CodeQL Analysis for PHP
+  #         uses: github/codeql-action/analyze@v3
+  #         with:
+  #           category: "/language:php"
 
   build:
-    needs: codeql_scan
+    # needs: codeql_scan
     runs-on: ubuntu-latest
 
     env:
