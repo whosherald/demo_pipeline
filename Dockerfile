@@ -22,7 +22,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # PHP Extension
 RUN docker-php-ext-install gettext intl pdo_mysql gd
 
-EXPOSE 80
+EXPOSE 8000
 
 RUN docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd
