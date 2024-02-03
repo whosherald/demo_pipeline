@@ -24,7 +24,7 @@ jobs:
       REMOTE_USER: ${{ secrets.USERNAME }}
       SERVER_IP: ${{ secrets.HOST_DNS }}
       CONTAINER_NAME: 'devsecops'
-#step
+#steps
     steps:
       - name: Checkout Code herald code
         uses: actions/checkout@v2
