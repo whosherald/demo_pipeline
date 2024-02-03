@@ -1,0 +1,132 @@
+#name of ppline
+name: lavarel pipeline
+
+on:
+  push:
+  #change of branch
+    branches:
+      - master  
+
+jobs:
+
+  codeql_scan:
+    name: Analyze
+    # Consider using larger runners for possible analysis time improvements..
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
+    permissions:
+      # required for all workflows
+      security-events: write
+
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'php' ] #
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Initializes the CodeQL tools for scanning..
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+
+
+  build:
+    needs: codeql_scan
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKER_USERNAME}}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      imagename: 'devsecops_github'
+      registry: 'docker.io'
+      imageTag: 'latest'
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }} 
+      REMOTE_USER: ${{ secrets.USERNAME }}
+      SERVER_IP: ${{ secrets.HOST_DNS }}
+      CONTAINER_NAME: 'devsecops'
+
+    steps:
+      - name: Checkout Code herald code
+        uses: actions/checkout@v2
+
+      - name: Build herald laravel Docker Image
+        run: |
+          docker build -t ${registry}/${DOCKERHUB_USERNAME}/${imagename}:${imageTag} .
+
+      - name: Push Docker Image to Docker Hub
+        run: |
+          echo "${DOCKERHUB_PASSWORD}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+          docker push ${registry}/${DOCKERHUB_USERNAME}/${imagename}:${imageTag}
+
+  trivy_scan:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Install Trivy
+        run: |
+          wget https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0.18.3_Linux-64bit.deb
+          sudo dpkg -i trivy_0.18.3_Linux-64bit.deb
+
+      - name: Scan Docker Image
+        run: |
+          trivy_report=$(trivy --format json docker.io/DockerHerald/devsecops_github:latest)
+          echo "$trivy_report"
+
+          # Check if there are any vulnerabilities with severity "CRITICAL"
+          if echo "$trivy_report" | jq '.[0].Vulnerabilities[] | select(.Severity == "CRITICAL")' > /dev/null; then
+            echo "Critical vulnerabilities found. Failing the workflow."
+            exit 1
+          else
+            echo "No critical vulnerabilities found. Proceeding with the workflow."
+          fi   
+          
+
+  deploy_qa:
+    needs: trivy_scan
+    runs-on: ubuntu-latest
+   
+
+    steps:
+
+      - name: Deploy to my serer
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.HOST_DNS }}
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: ${{ secrets.TARGET_DIR }}
+
+      - name: Executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker stop devsecops  || true
+            docker rm devsecops || true
+            
+            docker pull docker.io/DockerHerald/devsecops_github:latest
+            docker run -d --name devsecops -p 8000:8000 docker.io/DockerHerald/devsecops_github:latest
+
+            
+            
